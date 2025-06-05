@@ -1,6 +1,9 @@
 import mongoose from "mongoose";
+import bcrypt from "bcryptjs";
+import { generateUniqueId } from "../utils/generateIds.js";
 
 const userSchema = new mongoose.Schema({
+    userId: { type: String, unique: true },
     name: { type: String, required: true },
     email: { type: String, unique: true, required: true },
     password: { type: String, required: true },
@@ -10,14 +13,31 @@ const userSchema = new mongoose.Schema({
         default: "USER",
     },
     refreshToken: String,
-    cart: [{
-        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
-        quantity: { type: Number, default: 1 }
-    }],
-    orders: [{ type: mongoose.Schema.Types.ObjectId, ref: "Order" }]
+    purchases: [{ type: String, ref: "Product" }],
+    activeplan: Object
 },
     {
-        timestamps: true
+        timestamps: true,
+        toJSON: {
+            transform: (doc, ret) => {
+                delete ret._id;
+                delete ret.__v;
+                delete ret.password;
+                return ret;
+            }
+        }
     });
 
-export default mongoose.models.User || mongoose.model("User", userSchema);
+userSchema.pre("save", async function (next) {
+    if (!this.userId) {
+        this.userId = await generateUniqueId("USR", "User", "userId");
+    }
+
+    if (this.isModified("password")) {
+        this.password = await bcrypt.hash(this.password, 10);
+    }
+
+    next();
+});
+
+export default mongoose.model("User", userSchema);

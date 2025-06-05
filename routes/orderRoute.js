@@ -1,29 +1,17 @@
 import express from "express";
-import { createOrder, getStatusDistribution } from "../controllers/orderController.js";
-import Order from "../models/ordermodel.js";
+import { createOrder, getOrderList, getOrderDetails, updateOrderStatus, getStatusDistribution } from "../controllers/orderController.js";
+import { requireAuth, requireAdmin } from "../middleware/authmiddleware.js";
 
 const router = express.Router();
 
-router.post("/", createOrder);
+router.post("/", requireAuth, createOrder);
 
-router.get("/status-distribution", getStatusDistribution);
+router.get("/admin/list", requireAuth, requireAdmin, getOrderList);
 
-router.patch("/:orderId/status", async(req, res) => {
-    try {
-        const { orderId } = req.params;
-        const { status } = req.body;
+router.get("/admin/:orderId", requireAuth, requireAdmin, getOrderDetails);
 
-        if(!["Processing", "Shipped", "Delivered", "Cancelled"].includes(status)){
-            return res.status(400).json({message: "Invalid status value"});
-        }
+router.get("/admin/status-distribution", requireAuth, requireAdmin, getStatusDistribution);
 
-        const order = await Order.findByIdAndUpdate(orderId, { status }, {new: true});
-        if(!order) return res.status(404).json({message: "Order not found"});
-        res.json(order);
-    } catch (error) {
-        console.error("Error updating order status:", error);
-        res.status(500).json({message: "Internal server error."})
-    }
-})
+router.patch("/admin/:orderId/status", requireAuth, requireAdmin, updateOrderStatus);
 
 export default router;

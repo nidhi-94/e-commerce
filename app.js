@@ -13,6 +13,7 @@ import orderRoutes from "./routes/orderRoute.js";
 import productRoutes from "./routes/productRoute.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import statsRoutes from "./routes/statsRoute.js";
+import categoryRoutes from "./routes/categoryRoute.js";
 
 dotenv.config();
 connectDB();
@@ -31,9 +32,9 @@ app.use("/api/admin", adminRoutes);
 // app.use("/api/cart", cartRoutes);
 // app.use("/api/coupon", couponRoutes);
 app.use("/api/orders", orderRoutes);
-app.use("/api/createProduct", productRoutes);
-app.use("/api/allProducts", productRoutes);
+app.use("/api/products", productRoutes);
 app.use("/api/stats", statsRoutes);
+app.use("/api/categories", categoryRoutes);
 
 app.use(errorHandler);
 

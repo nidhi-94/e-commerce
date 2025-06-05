@@ -6,5 +6,6 @@ const router = express.Router();
 
 router.get("/users", requireAuth, requireAdmin, getAllUsers);
 router.get("/overview", requireAuth, requireAdmin, getAdminOverview);
+router.get("/stats", requireAuth, requireAdmin, getAdminOverview);
 
 export default router;

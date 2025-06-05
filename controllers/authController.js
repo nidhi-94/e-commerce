@@ -1,6 +1,6 @@
 import User from "../models/usermodel.js";
-import Order from "../models/ordermodel.js";
-import Product from "../models/productmodel.js";
+// import Order from "../models/ordermodel.js";
+// import Product from "../models/productmodel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
