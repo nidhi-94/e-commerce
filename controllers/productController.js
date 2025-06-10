@@ -2,11 +2,7 @@ import mongoose from "mongoose";
 import Product from "../models/productmodel.js";
 import Review from "../models/reviewmodel.js";
 import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinaryupload.js";
-import { generateUniqueId } from "../utils/generateIds.js";
-
-async function findProductByProductId(productId) {
-    return await Product.findOne({ productId });
-}
+import slugify from "slugify";
 
 export const createProduct = async (req, res) => {
     try {
@@ -28,36 +24,53 @@ export const createProduct = async (req, res) => {
             }
         }
 
-        const productId = await generateUniqueId("PROD", "Product", "productId");
+        let slug = slugify(title, { lower: true, strict: true });
+
+        let slugExists = await Product.findOne({ slug });
+        let suffix = 1;
+        while (slugExists) {
+            slug = slugify(title, { lower: true, strict: true }) + "-" + suffix;
+            slugExists = await Product.findOne({ slug });
+            suffix++;
+        }
+
+        let tagsArray = [];
+        if (typeof tags === "string") {
+            tagsArray = tags.replace(/['"]+/g, '').split(",").map(tag => tag.trim());
+        } else if (Array.isArray(tags)) {
+            tagsArray = tags;
+        }
+        console.log("Tags array:", tagsArray);
 
         const product = new Product({
-            productId,
             title,
-            price,
+            slug,
+            price: Number(price),
             description,
-            stock,
+            stock: Number(stock) || 0,
             category,
             imageUrl,
             brand,
-            rating: rating || 0,
-            numReviews: numReviews || 0,
-            tags: req.body.tags.replace(/['"]+/g, '').split(",").map(tag => tag.trim())
+            rating: Number(rating) || 0,
+            numReviews: Number(numReviews) || 0,
+            tags: tagsArray
         });
         console.log("Product object to save:", {
             title,
-            price,
+            slug,
+            price: Number(price),
             description,
-            stock,
+            stock: Number(stock) || 0,
             category,
             imageUrl,
             brand,
-            rating: rating || 0,
-            numReviews: numReviews || 0,
-            tags: req.body.tags.replace(/['"]+/g, '').split(",").map(tag => tag.trim())
+            rating: Number(rating) || 0,
+            numReviews: Number(numReviews) || 0,
+            tags: tagsArray
         });
 
-        await product.save();
-        res.status(201).json({ message: "Product created.", product });
+        const savedProduct = await product.save();
+        res.status(201).json({ message: "Product created.", savedProduct });
     } catch (error) {
         console.error("Create product error:", error);
         res.status(500).json({ message: "Failed to create a product", error: error.message });
@@ -68,7 +81,18 @@ export const updateProduct = async (req, res) => {
     try {
         const updateData = req.body;
 
-        const product = await findProductByProductId(req.params.id);
+        const id = req.params.id;
+        console.log("🔧 Update Product Request Received");
+        console.log("Product ID from URL:", id);
+        console.log("Request body:", req.body);
+        console.log("Files received:", req.files);
+        if (!id) {
+            console.log("Missing product ID in req.params");
+            return res.status(400).json({ message: "Missing product ID" });
+        }
+
+
+        const product = await Product.findById(id);
         if (!product) return res.status(404).json({ message: "Product not found." })
 
         if (req.files && req.files.length > 0) {
@@ -92,7 +116,7 @@ export const updateProduct = async (req, res) => {
         }
 
         const updatedProduct = await Product.findByIdAndUpdate(
-            product._id, 
+            id,
             updateData,
             { new: true });
         res.json({ message: "Product updated", product: updatedProduct });
@@ -103,7 +127,12 @@ export const updateProduct = async (req, res) => {
 
 export const deleteProduct = async (req, res) => {
     try {
-        const product = await findProductByProductId(req.params.id);
+        const { id } = req.params;
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid product id." });
+        }
+
+        const product = await Product.findById(id);
         if (!product) return res.status(404).json({ message: "Product not found." });
 
         if (product.imageUrl && product.imageUrl.length > 0) {
@@ -111,7 +140,7 @@ export const deleteProduct = async (req, res) => {
                 await deleteFromCloudinary(img.public_id);
             }
         }
-        await product.findByIdAndDelete(product._id);
+        await Product.findByIdAndDelete(id);
         res.json({ message: "Deleted successfully" });
     } catch (error) {
         res.status(500).json({ message: "Failed to delete product.", error: error.message });
@@ -143,10 +172,14 @@ export const getAllProducts = async (req, res) => {
 export const addReview = async (req, res) => {
     try {
         const { rating, comment } = req.body;
-        const productId = req.params.productId;
+        const { id } = req.params;
         const userId = req.user._id;
 
-        const product = await findProductByProductId(productId);
+        if (!mongoose.Types.ObjectId.isValid(id)) {
+            return res.status(400).json({ message: "Invalid product id." });
+        }
+
+        const product = await Product.findById(id);
         if (!product) return res.status(404).json({ message: "Product not found" });
 
         const existingReview = await Review.findOne({ user: userId, product: product._id });
@@ -175,19 +208,19 @@ export const addReview = async (req, res) => {
 
 export const getProductDetails = async (req, res) => {
     try {
-        const id = req.params.id;
-
+        const { id } = req.params;
+        console.log("Requested ID:", req.params.id);
         if (!mongoose.Types.ObjectId.isValid(id)) {
             return res.status(400).json({ message: "Invalid product id." });
         }
-        const product = await Product.findById(id);
 
+        const product = await Product.findById(id);
         if (!product) {
             return res.status(404).json({ message: "Product not found." });
         }
         res.json(product);
     } catch (error) {
         console.error("Get product details error:", error);
-        res.status(500).json({message: "Failed fetch product details.", error: error.message});
+        res.status(500).json({ message: "Failed fetch product details.", error: error.message });
     }
 }

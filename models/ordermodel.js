@@ -1,13 +1,9 @@
 import mongoose from "mongoose";
-import { generateUniqueId } from "../utils/generateIds.js";
 
 const orderSchema = new mongoose.Schema({
-    orderId: { type: String, unique: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     items: [{
-        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product"},
-        productId: { type: String },
-        title: String,
+        product: { type: mongoose.Schema.Types.ObjectId, ref: "Product", required: true},
         price: Number,
         quantity: Number
     }],
@@ -17,12 +13,12 @@ const orderSchema = new mongoose.Schema({
     grandTotal: { type: Number, required: true },
     status: {
         type: String,
-        enum: ["Processing", "Shipped", "Delivered", "Cancelled"],
+        enum: ["Processing", "Shipped", "Delivered", "Cancelled", "Paid"],
         default: "Processing"
     },
     paymentInfo: {
         method: { type: String },
-        paymentStatus: { type: String, enum: ["Pending", "Completed", "Failed"], default: "Pending" },
+        paymentStatus: { type: String, enum: ["Pending", "Completed", "Failed", "Paid"], default: "Pending" },
         transactionId: String,
         sessionId: String
     },
@@ -37,30 +33,15 @@ const orderSchema = new mongoose.Schema({
     },
 
     expectedDeliveryDate: Date,
-
     trackingHistory: [{
         status: String,
         location: String,
-        dateTime: Date
-    }]
-
+        dateTime: Date,
+        note: String
+    },],
+    orderId: { type: String },
 }, {
-    timestamps: true,
-    toJSON: {
-        transform: (doc, ret) => {
-            ret.id = ret._id;
-            delete ret._id;
-            delete ret.__v;
-            return ret;
-        }
-    }
+    timestamps: true
 });
-
-orderSchema.pre("save", async function (next) {
-    if (!this.orderId) {
-        this.orderId = await generateUniqueId("ORD", "Order", "orderId");
-    }
-    next();
-})
 
 export default mongoose.model("Order", orderSchema);

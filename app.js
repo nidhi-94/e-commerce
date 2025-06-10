@@ -3,13 +3,13 @@ import connectDB from "./config/db.js";
 import dotenv from "dotenv";
 import cors from "cors";
 import cookieParser from "cookie-parser";
-
 import authRoutes from "./routes/authRoute.js";
 import userRoutes from "./routes/userRoute.js";
 import adminRoutes from "./routes/adminRoute.js";
 // import cartRoutes from "./routes/cartRoute.js";
 // import couponRoutes from "./routes/couponRoute.js";
 import orderRoutes from "./routes/orderRoute.js";
+import { stripeWebhookHandler } from "./routes/webhookRoute.js";
 import productRoutes from "./routes/productRoute.js";
 import { errorHandler } from "./middleware/errorHandler.js";
 import statsRoutes from "./routes/statsRoute.js";
@@ -23,6 +23,9 @@ app.use(cors({
     origin: "http://localhost:5173",
     credentials: true
 }));
+
+app.post("/api/orders/stripe/webhook", express.raw({ type: 'application/json' }), stripeWebhookHandler);
+
 app.use(express.json()); 
 app.use(cookieParser());
 
@@ -31,7 +34,7 @@ app.use("/api/user", userRoutes);
 app.use("/api/admin", adminRoutes);
 // app.use("/api/cart", cartRoutes);
 // app.use("/api/coupon", couponRoutes);
-app.use("/api/orders", orderRoutes);
+app.use("/api/orders", orderRoutes); 
 app.use("/api/products", productRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/categories", categoryRoutes);

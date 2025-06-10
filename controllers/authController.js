@@ -13,8 +13,8 @@ dotenv.config();
 
 console.log("JWT_ACCESS_SECRET from env:", process.env.JWT_ACCESS_SECRET);
 
-const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-const ACCESS_TOKEN_EXPIRY = "15m";
+// const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
+// const ACCESS_TOKEN_EXPIRY = "15m";
 
 //REGISTER
 export const register = async (req, res) => {
@@ -44,10 +44,13 @@ export const login = async (req, res) => {
         const { email, password } = req.body;
 
         const user = await User.findOne({ email });
-        if (!user || !(await bcrypt.compare(password, user.password)))
-            return res.status(400).json({ message: "User not found" });
+        if (!user) return res.status(400).json({ message: "User not found" });
 
+        console.log("Stored password:", user.password);
+        console.log("Entered password:", password);
         const isMatch = await bcrypt.compare(password, user.password);
+        console.log("Password match result:", isMatch);
+
         if (!isMatch) return res.status(400).json({ message: "Invalid credentials." });
         console.log("Logging in user:", user.email, "with role:", user.role);
 
