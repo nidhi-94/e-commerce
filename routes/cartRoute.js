@@ -1,17 +1,20 @@
-// import express from "express";
-// import { getCart, addToCart, updateCartItem, removeCartItem, applyCoupon } from "../controllers/cartController.js";
-// import { requireSignIn } from "../middleware/authmiddleware.js";
+import express from "express";
+import { getCart, addToCart, updateCartItem, removeCartItem, applyCoupon, clearCart } from "../controllers/user/cartController.js";
+import { requireAuth, requireUser, verifyToken } from "../middleware/authmiddleware.js";
 
-// const router = express.Router();
+const router = express.Router();
+router.use(verifyToken);
 
-// router.get("/",requireSignIn, getCart);
+router.get("/", requireAuth, requireUser, getCart);
 
-// router.post("/add",requireSignIn ,addToCart);
+router.post("/add" , requireAuth, requireUser, addToCart);
 
-// router.put("/update",requireSignIn, updateCartItem);
+router.put("/update", updateCartItem);
 
-// router.delete("/remove/:productId",requireSignIn, removeCartItem);
+router.delete("/remove/:productId", removeCartItem);
 
-// router.post("/apply-coupon",requireSignIn, applyCoupon);
+router.delete("/clear", requireAuth, requireUser, clearCart);
 
-// export default router;
+router.post("/apply-coupon", applyCoupon);
+
+export default router;

@@ -1,6 +1,6 @@
-import User from "../models/usermodel.js";
-import Order from "../models/ordermodel.js";
-import Product from "../models/productmodel.js";
+import User from "../../models/usermodel.js";
+import Order from "../../models/ordermodel.js";
+import Product from "../../models/productmodel.js";
 
 //GET-ALL-USER
 export const getAllUsers = async (req, res) => {

@@ -1,6 +1,10 @@
-import Category from "../models/categorymodel.js";
-import { uploadToCloudinary, deleteFromCloudinary } from "../utils/cloudinaryupload.js";
+import mongoose from "mongoose";
+import Category from "../../models/categorymodel.js";
+import { uploadToCloudinary, deleteFromCloudinary } from "../../utils/cloudinaryupload.js";
 import slugify from "slugify";
+
+const toBool = (val) => val === "true" ||val === true;
+const allowedTypes = ["image/png", "image/svg+xml"];
 
 export const createCategory = async (req, res) => {
     try {
@@ -9,7 +13,7 @@ export const createCategory = async (req, res) => {
 
         const { name, isFeatured, isActive, displayOrder } = req.body;
 
-        if (!name) {
+        if (!name?.trim()) {
             return res.status(400).json({ message: "Category name is required." });
         }
 
@@ -17,28 +21,38 @@ export const createCategory = async (req, res) => {
             return res.status(400).json({ message: "Icon image (PNG or SVG) is required." });
         }
 
-        const iconResult = await uploadToCloudinary(req.file);
-        const slug = slugify(name, { lower: true, strict: true });
+        if (!allowedTypes.includes(req.file.mimetype)) {
+            return res.status(400).json({ message: "Only PNG or SVG icons are allowed." });
+        }
+
+        const slug = slugify(name.trim().toLowerCase(), { lower: true, strict: true });
 
         const existingCategory = await Category.findOne({ slug });
         if (existingCategory) {
             return res.status(400).json({ message: "Category with this name already exists." });
         }
 
-        const category = new Category({
+        const iconResult = await uploadToCloudinary(req.file);
+
+        const maxCategory = await Category.findOne().sort("-displayOrder").select("displayOrder");
+        const newDisplayOrder =  displayOrder?.trim() !== ""
+            ? Number(displayOrder) || 0
+            : maxCategory?.displayOrder + 1 || 1;
+
+        const newCategory = new Category({
             name,
             slug,
             icon: {
                 url: iconResult.secure_url,
                 public_id: iconResult.public_id
             },
-            isFeatured: isFeatured === "true" || isFeatured === true,
+            isFeatured: toBool(isFeatured),
             isActive: isActive === "false" ? false : true,
-            displayOrder: displayOrder ? parseInt(displayOrder) : 0
+            displayOrder: newDisplayOrder
         });
 
-        await category.save();
-        res.status(201).json({ message: "Category created successfully.", category });
+        await newCategory.save();
+        res.status(201).json({ message: "Category created successfully.", newCategory });
     } catch (error) {
         console.error("Error creating category:", error.message);
         res.status(500).json({ message: "Failed to create category.", error: error.message });
@@ -56,11 +70,27 @@ export const getAllCategories = async (req, res) => {
     }
 }
 
+export const getCategoryById = async (req, res) => {
+    try {
+        const { categoryId } = req.params;
+
+        const category = await Category.findById(categoryId);
+        if(!category) {
+            return res.status(404).json({ message: "Category not found." });
+        }
+        res.status(200).json(category);
+    } catch (error) {
+        console.log("Error fetching category:", error.message);
+        res.status(500).json({ message: "Failed to fetch category", error: error.message });
+    }
+}
+
 export const updateCategory = async (req, res) => {
     try {
-        console.log("update category body:", req.body);
-        console.log("update category file:", req.file);
-        console.log("update category params:", req.params);
+        console.log("======== Update Category Request ========");
+        console.log("Params (categoryId):", req.params.categoryId);
+        console.log("Body Data:", req.body);
+        console.log("Uploaded File:", req.file ? req.file.originalname : "No file uploaded");
 
         const { categoryId } = req.params;
         const { name, isFeatured, isActive, displayOrder } = req.body;
@@ -70,11 +100,12 @@ export const updateCategory = async (req, res) => {
             return res.status(400).json({ message: "category not found." });
         }
         if (name && name !== category.name) {
-            const slug = slugify(name, { lower: true, strict: true });
+            const slug = slugify(name.trim().toLowerCase(), { lower: true, strict: true });
+             console.log(`Checking for existing category with slug: ${slug}`);
 
             const existingCategory = await Category.findOne({
                 slug,
-                _id: { $ne: categoryId }
+                _id: { $ne: new mongoose.Types.ObjectId(categoryId) }
             });
             if (existingCategory) {
                 return res.status(400).json({ message: "Category with this name already exists." });
@@ -82,20 +113,30 @@ export const updateCategory = async (req, res) => {
 
             category.name = name;
             category.slug = slug;
+            console.log("Category name and slug updated:", name, slug);
         }
-        
-        if (typeof isFeatured !== "undefined") { category.isFeatured = isFeatured === "true" || isFeatured === true; }
-        if (typeof isActive !== "undefined") { category.isActive = isActive === "false" ? false : true; }
-        if (typeof displayOrder !== "undefined") { category.displayOrder = parseInt(displayOrder) || 0; }
+
+        if (typeof isFeatured !== "undefined") {category.isFeatured = toBool(isFeatured);
+            console.log("isFeatured set to:", category.isFeatured);
+        }
+        if (typeof isActive !== "undefined"){ category.isActive = isActive === "false" ? false : true; 
+            console.log("isActive set to:", category.isActive);
+        }
+        if (typeof displayOrder !== "undefined") {category.displayOrder = parseInt(displayOrder) || 0;
+            console.log("displayOrder set to:", category.displayOrder);
+        }
 
         if (req.file) {
-            console.log("Replacing icon for category:", categoryId);
+            if(!allowedTypes.includes(req.file.mimetype)){
+                return res.status(400).json({ message: "Only PNG or SVG icons are allowed." });
+            }
             if (category.icon?.public_id) {
+                console.log("New icon upload detected. Validating...");
                 try {
                     console.log("Deleting old icon:", category.icon.public_id);
                     await deleteFromCloudinary(category.icon.public_id);
                 } catch (error) {
-                    console.log("Error deleting old icon from Cloudinary:", error.message);
+                    console.warn("Error deleting old icon from Cloudinary:", error.message);
                 }
             }
 

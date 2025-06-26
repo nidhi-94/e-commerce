@@ -1,6 +1,4 @@
 import User from "../models/usermodel.js";
-// import Order from "../models/ordermodel.js";
-// import Product from "../models/productmodel.js";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
@@ -12,9 +10,6 @@ import hashToken from "../utils/hashToken.js";
 dotenv.config();
 
 console.log("JWT_ACCESS_SECRET from env:", process.env.JWT_ACCESS_SECRET);
-
-// const JWT_ACCESS_SECRET = process.env.JWT_ACCESS_SECRET;
-// const ACCESS_TOKEN_EXPIRY = "15m";
 
 //REGISTER
 export const register = async (req, res) => {
@@ -264,3 +259,23 @@ export const resetPassword = async (req, res) => {
         return res.status(400).json({ message: "Invalid or expired token." });
     }
 };
+
+//HOMEPAGE
+export const getHomePageData = async (req, res) => {
+    try {
+        const [ featuredCategories, popularProducts, newArrivals ] = await Promise.all([
+            User.find({ isFeatured: true }).sort({ displayOrder: 1, createdAt: -1 }).limit(5),
+            Product.find().sort({ rating: -1, numReviews: -1 }).limit(10),
+            Product.find().sort({ createdAt: -1 }).limit(10)
+        ]);
+
+        res.json ({
+            featuredCategories,
+            popularProducts,
+            newArrivals
+        }); 
+    } catch (error) {
+        console.error("Error fetching home page data:", error);
+        res.status(500).json({ message: "Failed to fetch home page data.", error: error.message });
+    }
+}

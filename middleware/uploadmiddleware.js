@@ -2,6 +2,8 @@ import multer from "multer";
 
 const storage = multer.memoryStorage();
 
+const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"];
+
 const fileFilter = (req, file, cb) => {
     console.log("File received:", {
         fieldname: file.fieldname,
@@ -9,7 +11,7 @@ const fileFilter = (req, file, cb) => {
         mimetype: file.mimetype,
         size: file.size
     });
-    const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/svg+xml"];
+   
     if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
     } else {
@@ -27,44 +29,64 @@ const upload = multer({
     limits,
 });
 
-export const uploadSingleIcon = async (req, res, next) => {
-    const singleUpload = upload.single("icon");
-
+const handleUpload = (fieldName, req, res, next, attempts = 0) => {
+    console.log(`Attempting to handle upload with field name: ${fieldName} (attempt ${attempts + 1})`);
+    console.log('Request headers:', req.headers);
+    
+    const singleUpload = upload.single(fieldName);
+    
     singleUpload(req, res, (err) => {
         if (err) {
-            console.error("Multer error:", err.message);
-            if(err instanceof multer.MulterError) {
-                if(err.code === "UNEXPECTED_FIELD") {
-                return res.status(400).json({ message: err.message });
+            console.error("Multer error details:", {
+                message: err.message,
+                code: err.code,
+                field: err.field,
+                storageErrors: err.storageErrors
+            });
+
+                if (err.code === "LIMIT_UNEXPECTED_FIELD" && attempts < 1) {
+                    const alternativeFieldName = fieldName === "icon" ? "upload" : "icon";
+                    console.log(`Trying alternative field name: ${alternativeFieldName}`);
+                    return handleUpload(alternativeFieldName, req, res, next, attempts + 1);
+                }
+                return res.status(400).json({message: err.message, details: "Please ensure you're sending the file with the correct field name (icon or upload)"});
             }
-            if(err.code === "LIMIT_FILE_SIZE") {
-                return res.status(400).json({ message: "File size exceeds the limit of 5MB." });
-            }
-        }
-            return res.status(400).json({ message: err.message });
-        }
+            console.log("File uploaded successful");
+            next();
+        });
+    };
+
+export const uploadSingleIcon = async (req, res, next) => {
+    console.log('Starting uploadSingleIcon middleware');
+    handleUpload("icon", req, res, (err) => {
+        if (err) return next(err);
         if (!req.file) {
             return res.status(400).json({ message: "Icon image is required." });
         }
-        console.log("File uploaded successfully:", req.file);
+        console.log("File uploaded successfully:", {
+            fieldname: req.file.fieldname,
+            originalname: req.file.originalname,
+            mimetype: req.file.mimetype,
+            size: req.file.size
+        });
         next();
     });
-}
+};
 
 export const uploadOptionalIcon = (req, res, next) => {
-    const singleUpload = upload.single("icon");
-    
-    singleUpload(req, res, (error) => {
-        if (error) {
-            console.error("Multer error:", error);
-            if (error instanceof multer.MulterError && error.code === 'UNEXPECTED_FIELD') {
-                console.log("No file uploaded for update, continuing...");
+    console.log('Starting uploadOptionalIcon middleware');
+    handleUpload("icon", req, res, (err) => {
+        if (err) {
+            if (err.message.includes("No file uploaded")) {
+                console.log('No file uploaded, continuing...');
                 return next();
             }
             return res.status(400).json({ 
-                message: error.message || "File upload error" 
+                message: err.message,
+                details: "Please ensure you're sending the file with the correct field name (icon or upload)"
             });
         }
+        console.log('Optional upload successful, proceeding to next middleware');
         next();
     });
 };
