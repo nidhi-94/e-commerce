@@ -4,6 +4,11 @@ import mongoose from "mongoose";
 import { Parser } from "json2csv";
 import { sendEmail } from "../../utils/sendEmail.js";
 
+const statusPriority = {
+    "Processing": 1,
+    "Paid": 2,
+}
+
 export const getOrderList = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;

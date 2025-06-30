@@ -3,9 +3,8 @@ import Product from "../models/productmodel.js";
 import Coupon from "../models/couponmodel.js";
 
 cron.schedule("0 * * * *", async () => {
+    const now = new Date();
     try {
-        const now = new Date();
-
         const expired = await Product.updateMany(
             {
                 onSale: true,

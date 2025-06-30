@@ -11,7 +11,7 @@ router.post("/add" , requireAuth, requireUser, addToCart);
 
 router.put("/update", updateCartItem);
 
-router.delete("/remove/:productId", removeCartItem);
+router.delete("/remove/:productId", requireAuth, removeCartItem);
 
 router.delete("/clear", requireAuth, requireUser, clearCart);
 

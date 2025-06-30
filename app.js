@@ -16,6 +16,7 @@ import { errorHandler } from "./middleware/errorHandler.js";
 import statsRoutes from "./routes/statsRoute.js";
 import categoryRoutes from "./routes/categoryRoute.js";
 import reviewRoutes from "./routes/reviewRoute.js";
+import wishlistRoutes from "./routes/wishlistroute.js";
 import "./utils/cronJobs.js";
 
 dotenv.config();
@@ -42,6 +43,7 @@ app.use("/api/products", productRoutes);
 app.use("/api/stats", statsRoutes);
 app.use("/api/categories", categoryRoutes);
 app.use("/api/reviews", reviewRoutes);
+app.use("/api/wishlist", wishlistRoutes);
 
 app.post("/api/orders/stripe/webhook", express.raw({ type: 'application/json' }), stripeWebhookHandler);
 

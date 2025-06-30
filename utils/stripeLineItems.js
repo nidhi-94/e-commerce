@@ -9,19 +9,6 @@ export const buildStripeLineItems = (orderItems, shippingCharges = 0, taxAmount 
         },
         quantity: item.quantity
     }));
-    if (shippingCharges > 0) {
-        lineItems.push({
-            price_data: {
-                currency: "inr",
-                product_data: {
-                    name: shippingLabel
-                },
-                unit_amount: shippingCharges * 100,
-            },
-            quantity: 1
-        });
-    }
-
     if (taxAmount > 0) {
         lineItems.push({
             price_data: {

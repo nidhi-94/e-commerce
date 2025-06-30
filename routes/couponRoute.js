@@ -11,8 +11,8 @@ router.get("/filter", requireAuth, requireAdmin, filterCoupons);
 router.delete("/delete/:id", requireAuth, requireAdmin, deleteCoupon);
 router.patch("/:id/toggle", requireAuth, requireAdmin, toggleCouponStatus);
 
+router.get("/applicable", requireAuth, getApplicableCoupons);
 router.get("/:code", requireAuth, requireUser, getCouponUser);
-router.get("/applicable", requireAuth, requireUser, getApplicableCoupons);
 router.post("/apply", requireAuth, requireUser, applyCouponToCart);
 
 export default router;  

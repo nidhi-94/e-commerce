@@ -30,6 +30,12 @@ export const calculateOrderSummary = async (orderItems, couponCode = "none", use
     let appliedCoupon = null;
 
     if (couponCode && couponCode !== "none") {
+        console.log("🔢 Passing to applyCoupon:", {
+            code: couponCode,
+            userId,
+            cartTotal: grandTotal,
+            categories: productCategoriesInOrder
+        });
         const coupon = await applyCoupon(couponCode, userId, grandTotal, productCategoriesInOrder);
 
         discount = coupon.discountPercent ? (grandTotal * coupon.discountPercent) / 100 : coupon.discountAmount;

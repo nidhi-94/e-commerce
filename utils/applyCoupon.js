@@ -26,8 +26,19 @@ const applyCoupon = async (code, userId, cartTotal, productCategories = []) => {
         expiresAt: { $gte: now },
     });
     console.log("🎟️ Coupon found:", coupon);
-    if (!coupon) throw new Error("Invalid or expired token.");
+
+    const allCoupons = await Coupon.find({});
+    console.log("📋 All coupons in DB:");
+    allCoupons.forEach(c => {
+        console.log(`🔹 Code: ${c.code}, Active: ${c.isActive}, Starts: ${c.startsAt}, Expires: ${c.expiresAt}`);
+    });
+
+    if (!coupon) {
+        console.log("🚫 Coupon not found or expired.");
+        throw new Error("Invalid or expired token.");
+    }
     if (coupon.maxUsage && coupon.usedCount >= coupon.maxUsage) {
+        console.log("🚫 Max usage exceeded.");
         throw new Error("Coupon usage limit exceeded");
     }
     if (coupon.onlyForFirstOrder) {
@@ -53,10 +64,12 @@ const applyCoupon = async (code, userId, cartTotal, productCategories = []) => {
             coupon.productCategory.includes(cat)
         );
         if (!isCategoryMatch) {
+            console.log("🚫 No matching category found.");
             throw new Error("This coupon is not applicable for selected categories.");
         }
     }
 
+    console.log("✅ Coupon passed all checks");
     return coupon;
 };
 

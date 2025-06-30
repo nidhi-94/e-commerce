@@ -98,24 +98,36 @@ export const removeCartItem = async (req, res) => {
   try {
     const userId = req.user._id;
     const { productId } = req.params;
-    console.log("❌ [REMOVE ITEM] User:", userId, "| Product:", productId);
 
-    if (!mongoose.Types.ObjectId.isValid(productId)) {
+    console.log("🧹 [REMOVE ITEM INITIATED]");
+    console.log("👤 User ID:", userId);
+    console.log("📦 Product ID to remove:", productId);
+
+    if (!productId || !mongoose.Types.ObjectId.isValid(productId)) {
+      console.log("❌ Invalid or missing product ID:", productId);
       return res.status(400).json({ message: "Invalid product ID" });
     }
-
     const cart = await Cart.findOne({ user: userId });
     if (!cart) {
+      console.log("❌ Cart not found for user:", userId);
       return res.status(404).json({ message: "Cart not found" });
     }
 
     console.log("🧪 Checking product IDs in cart:");
     cart.items.forEach(i => console.log("🆔", i.product.toString(), "| Match:", i.product.equals(productId)));
 
+    const originalLength = cart.items.length;
+
     cart.items = cart.items.filter(i => !i.product.equals(productId));
-    if (cart.items.length === 0) {
-      await Cart.findByIdAndDelete(cart._id);
-      console.log("Cart is empty.");
+    const newLength = cart.items.length;
+
+    if (originalLength === newLength) {
+      console.log("⚠️ Product not found in cart. No item removed.");
+      return res.status(404).json({ message: "Item not found in cart" });
+    }
+    if (newLength === 0) {
+      await Cart.save();
+      console.log("🗑️ All items removed. Cart deleted.");
       return res.json({ message: "Item removed. Cart is now empty and deleted." });
     }
 

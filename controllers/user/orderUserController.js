@@ -120,6 +120,15 @@ export const checkoutFromCart = async (req, res) => {
     console.log("🛍️ Creating Stripe checkout session...");
     console.log("🧾 Stripe line items:", stripeLineItems);
 
+    let stripeDiscount = null;
+    if (discount > 0) {
+      stripeDiscount = await stripe.coupons.create({
+        amount_off: Math.round(discount * 100),
+        currency: "inr",
+        duration: "once"
+      });
+    }
+
     const stripeSession = await stripe.checkout.sessions.create({
       payment_method_types: ["card"],
       line_items: stripeLineItems,
@@ -129,7 +138,23 @@ export const checkoutFromCart = async (req, res) => {
         generatedOrderId
       },
       success_url: `${process.env.FRONTEND_URL}/success`,
-      cancel_url: `${process.env.CANCEL_URL}/cancel`
+      cancel_url: `${process.env.CANCEL_URL}/cancel`,
+      ...(stripeDiscount ? { discounts: [{ coupon: stripeDiscount.id }] } : {}),
+      ...(shippingCharges > 0 ? {
+        shipping_options: [
+          {
+            shipping_rate_data: {
+              type: "fixed_amount",
+              fixed_amount: { amount: Math.round(shippingCharges * 100), currency: "inr" },
+              display_name: "Standard Shipping",
+              delivery_estimate: {
+                minimum: { unit: "business_day", value: 5 },
+                maximum: { unit: "business_day", value: 7 }
+              }
+            }
+          }
+        ]
+      } : {})
     });
     newOrder.paymentInfo.sessionId = stripeSession.id;
 
@@ -151,6 +176,11 @@ export const checkoutFromCart = async (req, res) => {
     }
     await Cart.findOneAndUpdate({ user: userId }, { items: [], coupon: null });
     console.log("🧹 Cart cleared after order");
+
+    await Wishlist.findOneAndUpdate(
+      { user: userId },
+      { $pull: { items: { product: { $in: orderItems.map(i => i.product) } } } }
+    );
 
     autoUpdateStatus(generatedOrderId);
     console.log("🚀 Order status auto-update triggered for:", generatedOrderId);
